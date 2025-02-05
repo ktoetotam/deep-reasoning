@@ -48,7 +48,7 @@ curl -sSL https://install.python-poetry.org | python3 -m https://github.com/mari
 Navigate to the project directory and install the dependencies using Poetry:
 
 ```sh
-cd llm-api-frontend
+cd deep-reasoning
 poetry install
 ```
 
@@ -56,9 +56,9 @@ poetry install
 
 Create a `.env` file in the project root and add the necessary environment variables:
 
-in frontend-for-llm-api/app/frontend/.env
+in deep-reasoning/app/frontend/.env
 ```
-touch frontend-for-llm-api/app/frontend/.env
+touch deep-reasoning/app/frontend/.env
 ```
 add your api key in the env files:
 
