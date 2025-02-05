@@ -1,6 +1,4 @@
-# LLM API Frontend
-
-# LLM API Frontend
+# Deep Reasoning
 
 This project is a Flask application with separated frontend and backend (API) blueprints.
 
@@ -14,9 +12,8 @@ To set up the project, follow these steps:
 - Poetry (for dependency management)
 
 ### Step 1: Clone the repository
-
-curl -sSL https://install.python-poetry.org | python3 -
 ```
+curl -sSL https://install.python-poetry.org | python3 -
 m https://github.com/mariasukhareva/llm-api-frontend.git
 ```
 ### Step 2: Install dependencies
@@ -24,23 +21,38 @@ m https://github.com/mariasukhareva/llm-api-frontend.git
 Navigate to the project directory and install the dependencies using Poetry:
 
 ```sh
-cd llm-api-frontend
+cd deep-reasoning
 poetry install
 ```
 
 ### Step 3: Set up environment variables
 
 Create a `.env` file in the project root and add the necessary environment variables:
-
-in llm-api-frontend/llm-api-frontend/app/frontend/.env
 ```
-touch llm-api-frontend/llm-api-frontend/app/frontend/.env
+OPENROUTER_API_KEY=YOURKEY
+SERPAPI_API_KEY=YOURKEY
+JINA_API_KEY=YOURKEY
+GOOGLE_API_KEY=YOURKEY
+GOOGLE_API_CX=YOURKEY
+OPENROUTER_URL=https://openrouter.ai/api/v1/chat/completions
+SERPAPI_URL=https://serpapi.com/search
+JINA_BASE_URL=https://r.jina.ai/
+
+DEFAULT_MODEL=mistral-7b-instruct
+
+```
+
+
+in 
+```
+touch app/frontend/.env
 ```
 add your api key in the env files:
 
 ```
 LLM_API_KEY="YOUR_API_KEY"
 ```
+This can be your openAI api or any compatible API with openai 1.0
 
 
 ### Step 4: Run the application
