@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Simple Chat Interface with Model Selection{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    /* OPTIONAL: Quick CSS for tab switching if not already in your main.css */
+    .chat-container {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+    }
+    .active-tab {
+      display: flex;
+    }
+    /* Adjust sidebar styles */
+    .sidebar ul {
+      padding-left: 0;
+    }
+    .sidebar li {
+      list-style: none;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+    .sidebar a {
+      text-decoration: none;
+      color: inherit;
+      font-weight: bold;
+    }
+    .sidebar a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar with navigation -->
+  <div class="sidebar">
+    <h2>Menu</h2>
+    <ul>
+      <!-- For Simple Chat, you can still use JS-based tab switching -->
+      <li onclick="openTab('chat')">Simple Chat</li>
+      <!-- For Deep Researcher, use a direct hyperlink to research.html -->
+      <li><a href="research.html">Deep Researcher</a></li>
+    </ul>
+      <!-- API Key input field -->
+      <div class="api-key-input">
+        <label for="apiKeyInput">Enter API Key:</label>
+        <input type="text" id="apiKeyInput" name="apiKeyInput">
+        <button id="saveApiKeyBtn">Save API Key</button>
+      </div>
+  </div>
+
+  <!-- Chat Interface Tab -->
+  <div id="chat" class="chat-container active-tab">
+    <div class="chat-header">
+      <h2>Simple Chat</h2>
+      <!-- Model selection dropdown -->
+      <div class="model-selection">
+        <label for="modelSelect">Select Model:</label>
+        <select id="modelSelect">
+          {% for model in models %}
+            <option value="{{ model }}">{{ model }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Clear Chat Button -->
+      <button class="clear-chat" onclick="clearChat()">Clear Chat</button>
+    </div>
+    <div class="chat-body" id="chatBody">
+      <!-- Initial bot message -->
+      <div class="message bot">
+        <p>Hello! How can I help you today?</p>
+      </div>
+    </div>
+    <div class="chat-input">
+      <input type="text" id="userInput" placeholder="Type your message here..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <!-- Optional: If you want to keep the Deep Researcher container in index.html, you can leave it here.
+       Otherwise, remove this block so that research.html handles Deep Research content exclusively. -->
+  <div id="research" class="chat-container">
+    <div class="chat-header">
+      <h2>Deep Researcher</h2>
+      <div class="model-selection">
+        <label for="modelSelectResearch">Select Model:</label>
+        <select id="modelSelectResearch">
+          <option value="modelA">Model A</option>
+          <option value="modelB">Model B</option>
+        </select>
+      </div>
+    </div>
+    <div class="chat-body" id="researchBody">
+      <!-- Deep Research messages will be appended here -->
+    </div>
+    <div class="chat-input">
+      <input type="text" id="userInputResearch" placeholder="Type your query here..." />
+      <button onclick="sendResearchMessage()">Send</button>
+    </div>
+  </div>
+
+  {% block content %}
+  {% endblock %}
+
+  <script>
+    // Function to switch tabs between chat interfaces.
+    function openTab(tabName) {
+      const containers = document.getElementsByClassName('chat-container');
+      for (let container of containers) {
+        container.classList.remove('active-tab');
+      }
+      document.getElementById(tabName).classList.add('active-tab');
+    }
+
+    // ------------------ Simple Chat Functions ------------------
+    let chatHistory = [];
+
+    async function sendMessage() {
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+
+      if (text === "") return;  // Do nothing if the input is empty.
+
+      // Append the user's message to the chat interface.
+      appendMessage('user', text);
+      chatHistory.push("User: " + text);
+
+      // Get the selected model from the dropdown.
+      const modelSelect = document.getElementById('modelSelect');
+      const selectedModel = modelSelect.value;
+
+      // Prepare the payload for the backend.
+      const payload = {
+        prompt: text,
+        history: chatHistory,
+        model: selectedModel
+      };
+
+      try {
+        // Send a POST request to the /api/chat endpoint.
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.response) {
+          // Append the model's response to the chat interface.
+          appendMessage('bot', data.response);
+          chatHistory.push("Bot: " + data.response);
+        } else {
+          // Append an error message if the API returns an error.
+          appendMessage('bot', 'Error: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
+        appendMessage('bot', 'Error connecting to server.' + error);
+      }
+
+      input.value = "";
+      scrollChatToBottom();
+    }
+
+    function appendMessage(sender, text) {
+      const chatBody = document.getElementById('chatBody');
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('message', sender);
+      const messageText = document.createElement('p');
+      messageText.textContent = text;
+      messageDiv.appendChild(messageText);
+      chatBody.appendChild(messageDiv);
+      scrollChatToBottom();
+    }
+
+    function scrollChatToBottom() {
+      const chatBody = document.getElementById('chatBody');
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    // ------------------ Deep Researcher Functions ------------------
+    let researchHistory = [];
+
+    async function sendResearchMessage() {
+      const input = document.getElementById('userInputResearch');
+      const text = input.value.trim();
+      if (text === "") return;
+      appendResearchMessage('user', text);
+      researchHistory.push(text);
+      const modelSelect = document.getElementById('modelSelectResearch');
+      const selectedModel = modelSelect.value;
+      const payload = {
+        prompt: text,
+        history: researchHistory,
+        model: selectedModel
+      };
+
+      try {
+        const response = await fetch('/api/deep-research', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (response.ok && data.response) {
+          appendResearchMessage('bot', data.response);
+          researchHistory = data.history || researchHistory.concat(data.response);
+        } else {
+          appendResearchMessage('bot', 'Error: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error sending research message:', error);
+        appendResearchMessage('bot', 'Error connecting to server: ' + error);
+      }
+      input.value = "";
+      scrollResearchChatToBottom();
+    }
+
+    function appendResearchMessage(sender, text) {
+      const researchBody = document.getElementById('researchBody');
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('message', sender);
+      const messageText = document.createElement('p');
+      messageText.textContent = text;
+      messageDiv.appendChild(messageText);
+      researchBody.appendChild(messageDiv);
+      scrollResearchChatToBottom();
+    }
+
+    // Add event listener to trigger sendMessage() when "Enter" key is pressed.
+    document.getElementById('userInput').addEventListener('keypress', function(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+
+
+    function scrollResearchChatToBottom() {
+      const researchBody = document.getElementById('researchBody');
+      researchBody.scrollTop = researchBody.scrollHeight;
+    }
+    document.getElementById('saveApiKeyBtn').addEventListener('click', function() {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            fetch('/set_api_key', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ apiKey: apiKey })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('API Key set successfully');
+                } else {
+                    alert('Failed to set API Key');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+    // Set the default tab on page load.
+    window.onload = function() {
+      openTab('chat');
+    };
+  </script>
+</body>
+</html>

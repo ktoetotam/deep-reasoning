@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Simple Chat Interface with Model Selection{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    .chat-container {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+    }
+    .active-tab {
+      display: flex;
+    }
+    .chat-body {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+    .chat-column {
+      padding: 10px;
+      overflow-y: auto;
+    }
+    #userResearch {
+      width: 66.66%;
+      border-right: 1px solid #ccc;
+    }
+    #botChat {
+      width: 33.33%;
+    }
+    .message {
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .insert_text {
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 0px;
+      text-align: left;
+    }
+    .user {
+      background-color: #e1f5fe;
+      text-align: left;
+    }
+    .bot {
+      background-color: #f1f1f1;
+      text-align: left;
+    }
+    .bot a {
+      display: block;
+      color: blue;
+      text-decoration: underline;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Menu</h2>
+    <ul>
+      <!-- For Simple Chat, you can still use JS-based tab switching -->
+      <li><a href="/">Simple Chat</a></li>
+      <!-- For Deep Researcher, use a direct hyperlink to research.html -->
+      <li><a href="research.html">Deep Researcher</a></li>
+    </ul>
+  </div>
+
+  <!-- Chat Interface Tab -->
+  <div id="chat" class="chat-container active-tab">
+    <div class="chat-header">
+      <h2>Deep Research</h2>
+      <!-- Model selection dropdown -->
+      <div class="model-selection">
+        <label for="modelSelect">Select Model:</label>
+        <select id="modelSelect">
+          {% for model in models %}
+            <option value="{{ model }}">{{ model }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button class="clear-chat" onclick="clearChat()">Clear Chat</button>
+    </div>
+    <div class="chat-body">
+      <div class="chat-column" id="userResearch">
+        <h3>Report</h3>
+      </div>
+      <div class="chat-column" id="botChat">
+        <h3>References</h3>
+      </div>
+    </div>
+    <div class="chat-input">
+      <input type="text" id="userResearchInput" placeholder="Type your message here..."/>
+      <button onclick="sendResearchMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    // Keep track of the chat history in a global array.
+    let chatHistory = [];
+
+    function openTab(tabName) {
+      const containers = document.getElementsByClassName('chat-container');
+      for (let container of containers) {
+        container.classList.remove('active-tab');
+      }
+      document.getElementById(tabName).classList.add('active-tab');
+    }
+
+    function appendMessage(sender, text) {
+      const chatColumn = document.getElementById('userResearch');
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('message', sender);
+      messageDiv.textContent = text;
+      chatColumn.appendChild(messageDiv);
+      
+      // Scroll to the bottom whenever a new message is added.
+      scrollChatToBottom();
+    }
+
+        // Function to append bot links or clickable URLs to the botChat column.
+    function appendReport(responseText) {
+      const botChat = document.getElementById('userResearch');
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add("insert_text");
+
+      // Convert URLs to clickable links
+      //const linkedText = responseText.replace(
+      //  /(https?:\/\/\S+)/g,
+      //  '<a href="$1" target="_blank">$1</a>'
+      //);
+
+      messageDiv.innerHTML = responseText;
+      botChat.appendChild(messageDiv);
+      
+      scrollChatToBottom();
+    }
+
+    // Function to append bot links or clickable URLs to the botChat column.
+    function appendBotLinks(responseText) {
+      const botChat = document.getElementById('botChat');
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add();
+
+
+      messageDiv.innerHTML = responseText;
+      botChat.appendChild(messageDiv);
+      
+      scrollChatToBottom();
+    }
+
+    async function sendResearchMessage() {
+      const input = document.getElementById('userResearchInput');
+      const text = input.value.trim();
+
+      if (text === "") return;  // Do nothing if the input is empty.
+
+      // Append the user's message to the chat interface.
+      // appendMessage('user', text);
+      // chatHistory.push("User: " + text);
+
+      // Get the selected model from the dropdown.
+      const modelSelect = document.getElementById('modelSelect');
+      const selectedModel = modelSelect.value;
+
+      // Prepare the payload for the backend.
+      const payload = {
+        prompt: text,
+        history: chatHistory,
+        model: selectedModel
+      };
+
+      try {
+        // Send a POST request to the /api/chat endpoint.
+        const response = await fetch('/api/research/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.report) {
+          // Append the model's response to the chat interface (userResearch column).
+          //   appendMessage('bot', data.report);
+          // chatHistory.push("Bot: " + data.response);
+
+          // If you want to display clickable URLs in the "Bot Links" column instead:
+          appendReport(data.report);
+          appendBotLinks(data.links);
+
+        } else {
+          // Append an error message if the API returns an error.
+          appendMessage('bot', 'Error: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
+        appendMessage('bot', 'Error connecting to server. ' + error);
+      }
+
+      input.value = "";
+      scrollChatToBottom();
+    }
+
+    // Add event listener to trigger sendResearchMessage() when "Enter" key is pressed.
+    document.getElementById('userResearchInput').addEventListener('keypress', function(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        sendResearchMessage();
+      }
+    });
+
+    // Clear the chat columns and reset the chat history.
+    function clearChat() {
+      chatHistory = [];
+      document.getElementById('userResearch').innerHTML = '<h3>Report</h3>';
+      document.getElementById('botChat').innerHTML = '<h3>Links</h3>';
+    }
+
+    // Scroll both chat columns to the bottom.
+    function scrollChatToBottom() {
+      const userResearchElement = document.getElementById('userResearch');
+      userResearchElement.scrollTop = userResearchElement.scrollHeight;
+      
+      const botChatElement = document.getElementById('botChat');
+      botChatElement.scrollTop = botChatElement.scrollHeight;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Simple Chat Interface with Model Selection{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    /* OPTIONAL: Quick CSS for tab switching if not already in your main.css */
+    .chat-container {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+    }
+    .active-tab {
+      display: flex;
+    }
+    /* You might need to adjust sidebar styles to work with these tabs */
+    .sidebar ul {
+      padding-left: 0;
+    }
+    .sidebar li {
+      list-style: none;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar with tab selection -->
+  <div class="sidebar">
+    <h2>Menu</h2>
+    <ul>
+      <li onclick="openTab('chat')">Simple Chat</li>
+      <li onclick="openTab('research')">Deep Researcher</li>
+    </ul>
+  </div>
+
+  <!-- Chat Interface Tab -->
+  <div id="chat" class="chat-container active-tab">
+    <div class="chat-header">
+      <h2>Simple Chat</h2>
+      <div class="model-selection">
+        <label for="modelSelect">Select Model:</label>
+        <select id="modelSelect">
+          <option value="model1">Model 1</option>
+          <option value="model2">Model 2</option>
+        </select>
+      </div>
+    </div>
+    <div class="chat-body" id="chatBody">
+      <!-- Chat messages will be appended here -->
+    </div>
+    <div class="chat-input">
+      <input type="text" id="userInput" placeholder="Type your message here..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <!-- Deep Researcher Tab -->
+  <div id="research" class="chat-container">
+    <div class="chat-header">
+      <h2>Deep Researcher</h2>
+      <div class="model-selection">
+        <label for="modelSelectResearch">Select Model:</label>
+        <select id="modelSelectResearch">
+          <option value="modelA">Model A</option>
+          <option value="modelB">Model B</option>
+        </select>
+      </div>
+    </div>
+    <div class="chat-body" id="researchBody">
+      <!-- Deep Research messages will be appended here -->
+    </div>
+    <div class="chat-input">
+      <input type="text" id="userInputResearch" placeholder="Type your query here..." />
+      <button onclick="sendResearchMessage()">Send</button>
+    </div>
+  </div>
+
+  {% block content %}
+  {% endblock %}
+
+  <script>
+    // Function to switch tabs between chat interfaces.
+    function openTab(tabName) {
+      // Hide all chat containers
+      const containers = document.getElementsByClassName('chat-container');
+      for (let container of containers) {
+        container.classList.remove('active-tab');
+      }
+      // Show the selected container
+      document.getElementById(tabName).classList.add('active-tab');
+    }
+
+    // ------------------ Simple Chat Functions ------------------
+    let chatHistory = [];
+
+    async function sendMessage() {
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+      if (text === "") return;
+      appendMessage('user', text);
+      chatHistory.push(text);
+      const modelSelect = document.getElementById('modelSelect');
+      const selectedModel = modelSelect.options[modelSelect.selectedIndex].value;
+      const payload = {
+        prompt: text,
+        history: chatHistory,
+        model: selectedModel
+      };
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (response.ok && data.response) {
+          appendMessage('bot', data.response);
+          chatHistory = data.history || chatHistory.concat(data.response);
+        } else {
+          appendMessage('bot', 'Error: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
+        appendMessage('bot', 'Error connecting to server: ' + error);
+      }
+      input.value = "";
+      scrollChatToBottom();
+    }
+
+    function appendMessage(sender, text) {
+      const chatBody = document.getElementById('chatBody');
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('message', sender);
+      const messageText = document.createElement('p');
+      messageText.textContent = text;
+      messageDiv.appendChild(messageText);
+      chatBody.appendChild(messageDiv);
+      scrollChatToBottom();
+    }
+
+    function scrollChatToBottom() {
+      const chatBody = document.getElementById('chatBody');
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    // ------------------ Deep Researcher Functions ------------------
+    let researchHistory = [];
+
+    async function sendResearchMessage() {
+      const input = document.getElementById('userInputResearch');
+      const text = input.value.trim();
+      if (text === "") return;
+      appendResearchMessage('user', text);
+      researchHistory.push(text);
+      const modelSelect = document.getElementById('modelSelectResearch');
+      const selectedModel = modelSelect.options[modelSelect.selectedIndex].value;
+      const payload = {
+        prompt: text,
+        history: researchHistory,
+        model: selectedModel
+      };
+
+      try {
+        const response = await fetch('/api/deep-research', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (response.ok && data.response) {
+          appendResearchMessage('bot', data.response);
+          researchHistory = data.history || researchHistory.concat(data.response);
+        } else {
+          appendResearchMessage('bot', 'Error: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error sending research message:', error);
+        appendResearchMessage('bot', 'Error connecting to server: ' + error);
+      }
+      input.value = "";
+      scrollResearchChatToBottom();
+    }
+
+    function appendResearchMessage(sender, text) {
+      const researchBody = document.getElementById('researchBody');
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('message', sender);
+      const messageText = document.createElement('p');
+      messageText.textContent = text;
+      messageDiv.appendChild(messageText);
+      researchBody.appendChild(messageDiv);
+      scrollResearchChatToBottom();
+    }
+
+    function scrollResearchChatToBottom() {
+      const researchBody = document.getElementById('researchBody');
+      researchBody.scrollTop = researchBody.scrollHeight;
+    }
+
+    // Set the default tab on page load.
+    window.onload = function() {
+      openTab('chat');
+    };
+  </script>
+</body>
+</html>
